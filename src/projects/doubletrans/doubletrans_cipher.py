@@ -9,6 +9,7 @@ Double transposition cipher implementation
 import string
 from pathlib import Path
 import itertools
+import time
 
 def load_word_list() -> set[str]:
     current_file = Path(__file__).resolve()
@@ -17,6 +18,7 @@ def load_word_list() -> set[str]:
     return {line.strip().lower() for line in word_file.read_text(encoding="utf-8").splitlines() if line.strip()}
 
 ENGLISH_WORDS = load_word_list()
+CACHED_ENGLISH_WORDS = set()
 PUNCTUATION_TABLE = str.maketrans('', '', string.punctuation)
 
 def encrypt(plaintext: str, key: tuple[tuple[int, ...], tuple[int, ...]]) -> str:
@@ -98,7 +100,17 @@ def analyze(ciphertext: str) -> set[str]:
         decrypted_words = decrypted.translate(PUNCTUATION_TABLE).split()
         if not decrypted_words:
             return False
-        return all(word.lower() in ENGLISH_WORDS for word in decrypted_words)
+        
+        for word in decrypted_words:
+            lower_word = word.lower()
+            if lower_word in CACHED_ENGLISH_WORDS:
+                continue
+            if lower_word in ENGLISH_WORDS:
+                CACHED_ENGLISH_WORDS.add(lower_word)
+            else:
+                return False
+
+        return True
     
 
     def try_all_permutations(text, dimensions):
@@ -125,25 +137,32 @@ def analyze(ciphertext: str) -> set[str]:
             return permutation_result
     
     return []
-        
-
 
 def main():
     """Main function"""
     print("Phrases to decrypt:")
     phrases = [
-        #' AEWHVA EU NHSOT,OR*E OLBMP', 
+        ' AEWHVA EU NHSOT,OR*E OLBMP', 
         'MISENHTOWEGIDKC HW IA STCSYO*EM ',
         'TTYME ESR.OY RTDNGI EOSHF EPT OR HPREROSE A   IOMNFT',
         "TRRONE FOMS.Y UR,OORFF N IT M'NOI , EWRDITJU YS DSFE TIFASE,RTNGRMLI YEAA , RCZY"
-        ]
+    ]
 
     for phrase in phrases:
         print(phrase)
-        print('Candidates:')
-        print("    " + str(analyze(phrase)))
-    
+        
+        start_time = time.perf_counter()
+        candidates = analyze(phrase)
+        end_time = time.perf_counter()
+        elapsed_time = end_time - start_time
 
+        print('Candidates:')
+        print("    " + str(candidates))
+        print(f"    Time taken: {elapsed_time:.4f} seconds")
+        print("    Size of cache: " + str(len(CACHED_ENGLISH_WORDS)))
+
+        CACHED_ENGLISH_WORDS.clear()
 
 if __name__ == "__main__":
     main()
+
