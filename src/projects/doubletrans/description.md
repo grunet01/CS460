@@ -36,7 +36,7 @@ Try the following heuristics:
 Decipher the following phrases and replace `...` in this file with your answer.
 You may complete this task programmatically, manually, or using a hybrid approach.
 
-- ' AEWHVA EU NHSOT,OR*E OLBMP' as plaintext is "..."
+- ' AEWHVA EU NHSOT,OR*E OLBMP' as plaintext is "houston, we have a problem"
 - 'MISENHTOWEGIDKC HW IA STCSYO*EM ' as plaintext is "..."
 - 'TTYME ESR.OY RTDNGI EOSHF EPT OR HPREROSE A   IOMNFT' as plaintext is "..."
 - 'TRRONE FOMS.Y UR,OORFF N IT M'NOI , EWRDITJU YS DSFE TIFASE,RTNGRMLI YEAA , RCZY' as plaintext is "..."
