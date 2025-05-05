@@ -26,8 +26,11 @@ def generate_cipher_proposal(supported: dict[str, list[int]]) -> str:
     :param supported: cryptosystems supported by the client
     :return: proposal as a string
     """
-    # TODO: Implement this function
-    ...
+    parts = []
+    for cipher, sizes in supported.items():
+        sizes_str = ",".join(str(size) for size in sizes)
+        parts.append(f"{cipher}:[{sizes_str}]")
+    return "ProposedCiphers:" + ",".join(parts)
 
 
 def parse_cipher_selection(msg: str) -> tuple[str, int]:
@@ -36,8 +39,10 @@ def parse_cipher_selection(msg: str) -> tuple[str, int]:
     :param msg: server's message with the selected cryptosystem
     :return: (cipher_name, key_size) tuple extracted from the message
     """
-    # TODO: Implement this function
-    ...
+    prefix = "ChosenCipher:"
+    body = msg[len(prefix):]
+    cipher_name, key_size_str = body.split(",", 1)
+    return cipher_name, int(key_size_str)
 
 
 def generate_dhm_request(public_key: int) -> str:
@@ -46,8 +51,7 @@ def generate_dhm_request(public_key: int) -> str:
     :param: client's DHM public key
     :return: string according to the specification
     """
-    # TODO: Implement this function
-    ...
+    return f"DHMKE:{public_key}"
 
 
 def parse_dhm_response(msg: str) -> int:
@@ -56,8 +60,7 @@ def parse_dhm_response(msg: str) -> int:
     :param msg: server's DHMKE message
     :return: number in the server's message
     """
-    # TODO: Implement this function
-    ...
+    return int(msg.split(":")[1])
 
 
 def get_key_and_iv(
@@ -76,8 +79,13 @@ def get_key_and_iv(
     `iv` is the *last* `ivlen` bytes of the shared key
     Both key and IV must be returned as bytes
     """
-    # TODO: Implement this function
-    ...
+    cipher_mod = TEXT_TO_OBJ.get(cipher_name)
+    if cipher_mod is None:
+        raise ValueError(f"Unsupported cipher: {cipher_name}")
+    hex_key_len = key_size // 8
+    key_hex = shared_key[:hex_key_len]
+    iv_hex = shared_key[-IV_LEN[cipher_name]:]
+    return cipher_mod, key_hex.encode(), iv_hex.encode()
 
 
 def add_padding(message: str) -> str:
@@ -86,8 +94,10 @@ def add_padding(message: str) -> str:
     :param message: message to pad
     :return: padded message
     """
-    # TODO: Implement this function
-    ...
+    pad_len = (16 - (len(message) % 16)) % 16
+    if pad_len == 0:
+        pad_len = 16
+    return message + ("\x00" * pad_len)
 
 
 def encrypt_message(message: str, crypto: ModuleType, hashing: ModuleType) -> tuple[bytes, str]:
@@ -103,8 +113,18 @@ def encrypt_message(message: str, crypto: ModuleType, hashing: ModuleType) -> tu
     2. Encrypt using cipher `crypto`
     3. Compute HMAC using `hashing`
     """
-    # TODO: Implement this function
-    ...
+    # Step 1: Pad the message
+    padded = add_padding(message)
+    padded_bytes = padded.encode()
+
+    # Step 2: Encrypt the message
+    ciphertext = crypto.encrypt(padded_bytes)
+
+    # Step 3: Compute HMAC
+    hashing.update(ciphertext)
+    hmac_value = hashing.hexdigest()
+
+    return ciphertext, hmac_value
 
 
 def main():

@@ -27,8 +27,37 @@ def parse_proposal(msg: str) -> dict[str, list[int]]:
     :param msg: message from the client with a proposal (ciphers and key sizes)
     :return: the ciphers and keys as a dictionary
     """
-    # TODO: Implement this function
-    ...
+    prefix = "ProposedCiphers:"
+    if not msg.startswith(prefix):
+        raise ValueError(f"Unexpected proposal format: {msg!r}")
+
+    body = msg[len(prefix):]
+    result: dict[str, list[int]] = {}
+    i = 0
+    n = len(body)
+
+    while i < n:
+        j = body.find(":[", i)
+        name = body[i:j]
+        
+        start_keys = j + 2
+        k = start_keys
+        while k < n and body[k] != "]":
+            k += 1
+        keys_str = body[start_keys:k]
+        
+        if keys_str.strip() == "":
+            keys = []
+        else:
+            keys = [int(x) for x in keys_str.split(",")]
+
+        result[name] = keys
+
+        i = k + 1
+        if i < n and body[i] == ",":
+            i += 1
+
+    return result
 
 
 def select_cipher(supported: dict, proposed: dict) -> tuple[str, int]:
@@ -39,8 +68,22 @@ def select_cipher(supported: dict, proposed: dict) -> tuple[str, int]:
     :return: tuple (cipher, key_size) of the common cipher where key_size is the longest supported by both
     :raise: ValueError if there is no (cipher, key_size) combination that both client and server support
     """
-    # TODO: Implement this function
-    ...
+    best: tuple[str, int] | None = None
+
+    for cipher, sup_keys in supported.items():
+        if cipher not in proposed:
+            continue
+        common = set(sup_keys).intersection(proposed[cipher])
+        if not common:
+            continue
+        top = max(common)
+        if best is None or top > best[1]:
+            best = (cipher, top)
+
+    if best is None:
+        raise ValueError("Could not agree on a cipher")
+
+    return best
 
 
 def generate_cipher_response(cipher: str, key_size: int) -> str:
@@ -50,8 +93,7 @@ def generate_cipher_response(cipher: str, key_size: int) -> str:
     :param key_size: chosen key size
     :return: (cipher, key_size) selection as a string
     """
-    # TODO: Implement this function
-    ...
+    return f"ChosenCipher:{cipher},{key_size}"
 
 
 def parse_dhm_request(msg: str) -> int:
@@ -60,8 +102,7 @@ def parse_dhm_request(msg: str) -> int:
     :param msg: client's DHMKE initial message
     :return: number in the client's message
     """
-    # TODO: Implement this function
-    ...
+    return int(msg.split(":")[1])
 
 
 def get_key_and_iv(
@@ -80,8 +121,15 @@ def get_key_and_iv(
     `iv` is the *last* `ivlen` bytes of the shared key
     Both key and IV must be returned as bytes
     """
-    # TODO: Implement this function
-    ...
+    cipher_mod = TEXT_TO_OBJ.get(cipher_name)
+    if cipher_mod is None:
+        raise ValueError(f"Unsupported cipher: {cipher_name}")
+    hex_key_len = key_size // 8
+    key_hex = shared_key[:hex_key_len]
+    if cipher_name == "DES3" and hex_key_len < 16:
+        key_hex = key_hex.ljust(16, "0")
+    iv_hex = shared_key[-IV_LEN[cipher_name]:]
+    return cipher_mod, key_hex.encode(), iv_hex.encode()
 
 
 def generate_dhm_response(public_key: int) -> str:
@@ -90,8 +138,7 @@ def generate_dhm_response(public_key: int) -> str:
     :param public_key: public portion of the DHMKE
     :return: string according to the specification
     """
-    # TODO: Implement this function
-    ...
+    return f"DHMKE:{public_key}"
 
 
 def read_message(msg_cipher: bytes, crypto: ModuleType) -> tuple[str, str]:
@@ -101,8 +148,18 @@ def read_message(msg_cipher: bytes, crypto: ModuleType) -> tuple[str, str]:
     :crypto: chosen cipher, must be initialized in the `main`
     :return: (plaintext, hmac) tuple
     """
-    # TODO: Implement this function
-    ...
+    decrypted = crypto.decrypt(msg_cipher)
+    pad_len = decrypted[-1]
+
+    unpadded = decrypted[:-pad_len]
+
+    hmac_bin = unpadded[-32:]
+    message_bytes = unpadded[:-32]
+
+    plaintext = message_bytes.decode('utf-8')
+    hmac_hex = hmac_bin.hex()
+
+    return plaintext, hmac_hex
 
 
 def validate_hmac(msg_cipher: bytes, hmac_in: str, hashing: ModuleType) -> bool:
@@ -113,8 +170,13 @@ def validate_hmac(msg_cipher: bytes, hmac_in: str, hashing: ModuleType) -> bool:
     :param hashing: hashing object, must be initialized in the `main`
     :raise: ValueError is HMAC is invalid
     """
-    # TODO: Implement this function
-    ...
+    tail_len = len(hmac_in)
+    ciphertext = msg_cipher[:-tail_len]
+    hashing.update(ciphertext)
+    calculated = hashing.hexdigest()
+    if calculated != hmac_in:
+        raise ValueError("Bad HMAC")
+    return True
 
 
 def main():
